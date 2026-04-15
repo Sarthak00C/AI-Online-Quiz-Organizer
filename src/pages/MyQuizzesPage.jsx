@@ -4,6 +4,7 @@ import { apiClient } from "../integrations/api/client";
 import { AppLayout } from "../components/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../hooks/use-toast";
+import { TrendingUp } from "lucide-react";
 
 import {
   Card,

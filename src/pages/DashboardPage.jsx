@@ -58,32 +58,30 @@ function DashboardPage() {
         setAttempts(allAttempts);
         setMyQuizzes(quizzesRes?.quizzes || []);
 
-        const userScores = new Map();
-        allAttempts.forEach((attempt) => {
-          const prev = userScores.get(attempt.userId) || { total: 0, questions: 0 };
-          userScores.set(attempt.userId, {
-            total: prev.total + attempt.score,
-            questions: prev.questions + attempt.totalQuestions,
-          });
-        });
+        // ✅ Use backend leaderboard instead of local calculation
+      // ✅ ALWAYS use attempts (works for ALL users)
+      const firstAttemptQuiz = allAttempts[0]?.quiz?.quizCode;
 
-        const sorted = Array.from(userScores.entries())
-          .map(([userId, scores]) => ({
-            userId,
-            score: scores.questions > 0 ? Math.round((scores.total / scores.questions) * 100) : 0,
-          }))
-          .sort((a, b) => b.score - a.score);
+      if (firstAttemptQuiz) {
+        const leaderboardRes = await apiClient.getLeaderboard(firstAttemptQuiz);
+        const leaderboardData = leaderboardRes?.leaderboard || [];
 
         setLeaderboard(
-          sorted.slice(0, 5).map((entry, index) => ({
+          leaderboardData.slice(0, 5).map((entry, index) => ({
             rank: index + 1,
-            name: entry.userId === user.id ? profile?.name || "You" : `User ${entry.userId.slice(0, 8)}`,
-            score: entry.score,
+            name: entry.name || "Anonymous",
+            score: entry.percentage,
           }))
         );
 
-        const myEntry = sorted.find((entry) => entry.userId === user.id);
-        setUserRank(myEntry ? sorted.indexOf(myEntry) + 1 : null);
+        const myEntry = leaderboardData.find(
+          (entry) => entry.userId === user.id
+        );
+
+        setUserRank(
+          myEntry ? leaderboardData.indexOf(myEntry) + 1 : null
+        );
+      }
       } catch (error) {
         console.error("Error loading dashboard data:", error);
       } finally {

@@ -29,27 +29,44 @@ function QuizAttemptPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchQuiz = async () => {
-      if (!quizId) return;
+    // REPLACE the entire fetchQuiz function
+      const fetchQuiz = async () => {
+      if (!quizId) {
+        console.error("No quizId found in URL");
+        return;
+      }
 
       try {
-        const quizData = await apiClient.getQuiz(quizId);
+        console.log("Fetching quiz with ID:", quizId);
+
+        const [quizData, questionsData] = await Promise.all([
+          apiClient.getQuiz(quizId),
+          apiClient.getQuestions(quizId)
+        ]);
+
+        console.log("✅ Quiz Data received:", quizData);
+        console.log("✅ Questions Data received:", questionsData);
+        console.log("✅ Quiz Data received:", JSON.stringify(quizData, null, 2));
+        console.log("✅ Questions Data received:", JSON.stringify(questionsData, null, 2));
 
         setQuiz(quizData.quiz);
         setTimeLeft(quizData.quiz.timeLimit * 60);
 
-        const questionsData = quizData.questions || [];
+        // Set questions safely
+        const questionsList = questionsData?.questions || questionsData || [];
+        console.log("Final questions array length:", questionsList.length);
 
-        setQuestions(
-          questionsData.map((q) => ({
-            id: q.id,
-            questionText: q.questionText,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            orderIndex: q.orderIndex,
-          }))
-        );
-      } catch {
+        setQuestions(questionsList.map(q => ({
+          id: q.id,
+          questionText: q.questionText || q.text,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          orderIndex: q.orderIndex,
+        })));
+
+      } catch (err) {
+        console.error("❌ Quiz fetch failed:", err.response?.data || err.message);
+        toast({ title: "Error", description: "Failed to load quiz", variant: "destructive" });
         navigate("/join-quiz");
       } finally {
         setLoading(false);
@@ -137,7 +154,7 @@ function QuizAttemptPage() {
     return (
       <AppLayout>
         <div className="max-w-lg mx-auto mt-12 text-center animate-fade-in">
-          
+
           <div className="mx-auto mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-10 w-10 text-primary" />
           </div>
@@ -203,7 +220,7 @@ function QuizAttemptPage() {
               {quiz?.topic} • {questions.length} Questions
             </p>
           </div>
-          
+
           <div className="flex items-center gap-3 bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 self-start md:self-auto">
             <Clock className={`h-5 w-5 ${timeLeft < 60 ? "text-destructive animate-pulse" : "text-primary"}`} />
             <span className={`font-mono text-xl font-bold ${timeLeft < 60 ? "text-destructive" : "text-primary"}`}>
@@ -216,7 +233,7 @@ function QuizAttemptPage() {
         <div className="space-y-2">
           <div className="flex justify-between text-sm font-medium">
             <span>Question {currentIdx + 1} of {questions.length}</span>
-            <span>{Math.round(((currentIdx + 1) / questions.length) * 100)}% Complete</span>
+            <span>{questions.length > 0 ? Math.round(((currentIdx + 1) / questions.length) * 100) : 0}% Complete</span>
           </div>
           <Progress value={((currentIdx + 1) / questions.length) * 100} className="h-2 rounded-full" />
         </div>
@@ -234,22 +251,19 @@ function QuizAttemptPage() {
                 <button
                   key={oIdx}
                   onClick={() => setAnswers({ ...answers, [currentQ.id]: oIdx })}
-                  className={`group relative flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                    answers[currentQ.id] === oIdx
-                      ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                      : "border-muted hover:border-primary/30 hover:bg-muted/50"
-                  }`}
+                  className={`group relative flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-200 ${answers[currentQ.id] === oIdx
+                    ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
+                    : "border-muted hover:border-primary/30 hover:bg-muted/50"
+                    }`}
                 >
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold transition-colors ${
-                    answers[currentQ.id] === oIdx
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-                  }`}>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold transition-colors ${answers[currentQ.id] === oIdx
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                    }`}>
                     {String.fromCharCode(65 + oIdx)}
                   </div>
-                  <span className={`font-medium text-lg ${
-                    answers[currentQ.id] === oIdx ? "text-primary" : "text-foreground"
-                  }`}>
+                  <span className={`font-medium text-lg ${answers[currentQ.id] === oIdx ? "text-primary" : "text-foreground"
+                    }`}>
                     {opt}
                   </span>
                   {answers[currentQ.id] === oIdx && (

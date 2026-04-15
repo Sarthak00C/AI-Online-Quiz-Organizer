@@ -29,12 +29,12 @@ import {
 
 import { useToast } from "../hooks/use-toast";
 
-import { 
-  Plus, 
-  Trash2, 
-  Edit,  
-  Sparkles, 
-  Loader2 
+import {
+  Plus,
+  Trash2,
+  Edit,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 
 function CreateQuizPage() {
@@ -123,45 +123,55 @@ function CreateQuizPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) return;
+  e.preventDefault();
+  if (!user || !title.trim() || !topic.trim() || questions.length === 0) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const quizResponse = await apiClient.createQuiz(
-        title,
-        topic,
-        difficulty,
-        timeLimit
-      );
+  try {
+    // Step 1: Create Quiz
+    const quizResponse = await apiClient.createQuiz(
+      title,
+      topic,
+      difficulty,
+      timeLimit
+    );
 
-      const quizId = quizResponse.quiz.id;
+    const quizId = quizResponse.quiz?.id || quizResponse.quiz?._id;
 
-      const questionsToInsert = questions.map((q) => ({
-        questionText: q.question_text,
-        options: q.options,
-        correctAnswer: q.correct_answer,
-      }));
+    if (!quizId) throw new Error("Failed to retrieve quiz ID");
 
-      await apiClient.addQuestions(quizId, questionsToInsert);
+    console.log("✅ Quiz created with ID:", quizId);
 
-      toast({
-        title: "Quiz created!",
-        description: `Quiz code: ${quizResponse.quiz.quizCode}. Share it with your students!`,
-      });
+    // Step 2: Prepare and add questions
+    const questionsToInsert = questions.map((q, index) => ({
+      questionText: q.question_text?.trim(),
+      options: q.options.filter(opt => opt.trim() !== ""),
+      correctAnswer: Number(q.correct_answer),
+      orderIndex: index,
+    }));
 
-      navigate("/dashboard");
-    } catch (err) {
-      toast({
-        title: "Error creating quiz",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    const addResponse = await apiClient.addQuestions(quizId, questionsToInsert);
+    console.log("✅ Questions added response:", addResponse);
+
+    toast({
+      title: "Quiz created successfully!",
+      description: `Quiz code: ${quizResponse.quiz.quizCode} | ${questions.length} questions`,
+    });
+
+    navigate("/dashboard");
+
+  } catch (err) {
+    console.error("Creation failed:", err.response?.data || err);
+    toast({
+      title: "Error creating quiz",
+      description: err.response?.data?.message || err.message,
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AppLayout>
@@ -292,9 +302,9 @@ function CreateQuizPage() {
                     {qIdx + 1}
                   </span>
                   {questions.length > 1 && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => removeQuestion(qIdx)}
                       className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     >
@@ -322,11 +332,10 @@ function CreateQuizPage() {
                         <button
                           type="button"
                           onClick={() => updateQuestion(qIdx, "correct_answer", oIdx)}
-                          className={`text-xs px-2 py-0.5 rounded-full transition-all ${
-                            q.correct_answer === oIdx 
-                            ? "bg-green-100 text-green-700 font-bold border border-green-200" 
+                          className={`text-xs px-2 py-0.5 rounded-full transition-all ${q.correct_answer === oIdx
+                            ? "bg-green-100 text-green-700 font-bold border border-green-200"
                             : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary border border-transparent"
-                          }`}
+                            }`}
                         >
                           {q.correct_answer === oIdx ? "Correct Answer" : "Mark Correct"}
                         </button>
@@ -335,11 +344,10 @@ function CreateQuizPage() {
                         placeholder={`Option ${oIdx + 1}`}
                         value={opt}
                         onChange={(e) => updateOption(qIdx, oIdx, e.target.value)}
-                        className={`rounded-xl transition-all ${
-                          q.correct_answer === oIdx 
-                          ? "border-green-500/50 bg-green-50/10 focus-visible:ring-green-500" 
+                        className={`rounded-xl transition-all ${q.correct_answer === oIdx
+                          ? "border-green-500/50 bg-green-50/10 focus-visible:ring-green-500"
                           : "border-primary/10 focus:border-primary"
-                        }`}
+                          }`}
                       />
                     </div>
                   ))}
