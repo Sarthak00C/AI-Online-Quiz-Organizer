@@ -70,7 +70,7 @@ FORMAT:
 ]
 `;
 
-      // ✅ Groq API call
+      // Groq API call
       const completion = await groq.chat.completions.create({
         model: "llama-3.1-8b-instant", // fast + free
         messages: [
@@ -86,12 +86,12 @@ FORMAT:
 
       console.log("AI RAW RESPONSE:\n", responseText);
 
-      // ✅ Clean markdown
+      // Clean markdown
       const cleaned = responseText
         .replace(/```json|```/g, '')
         .trim();
 
-      // ✅ Extract JSON safely
+      // Extract JSON safely
       const match = cleaned.match(/\[\s*{[\s\S]*}\s*\]/);
 
       if (!match) {
@@ -108,7 +108,7 @@ FORMAT:
         throw err;
       }
 
-      // ✅ Validate
+      // Validate
       if (!Array.isArray(questions) || questions.length === 0) {
         throw new Error("Invalid format");
       }
